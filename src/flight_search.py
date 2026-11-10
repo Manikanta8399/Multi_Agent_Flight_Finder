@@ -1,8 +1,24 @@
+import os
+
+from src.duffel_client import search_duffel_flights
+from src.flight_constants import NO_FLIGHTS_MESSAGE
+
+
 SAMPLE_ORIGIN = "San Francisco"
 SAMPLE_DESTINATION = "New York"
+DEFAULT_SEARCH_PROVIDER = "sample"
+DEFAULT_PASSENGER_COUNT = 1
+DEFAULT_CABIN_CLASS = "economy"
 
 
-def search_flights(origin, destination, date):
+def search_flights(
+    origin,
+    destination,
+    date,
+    passenger_count=DEFAULT_PASSENGER_COUNT,
+    cabin_class=DEFAULT_CABIN_CLASS,
+    return_date=None,
+):
     missing_fields = []
 
     if not origin or not str(origin).strip():
@@ -19,6 +35,42 @@ def search_flights(origin, destination, date):
             "destination": destination,
             "date": date,
             "missing_fields": missing_fields,
+            "results": [],
+        }
+
+    provider = os.getenv("FLIGHT_SEARCH_PROVIDER", DEFAULT_SEARCH_PROVIDER).strip().lower()
+    if provider == "duffel":
+        return search_duffel_flights(
+            origin,
+            destination,
+            date,
+            passenger_count=passenger_count,
+            cabin_class=cabin_class,
+            return_date=return_date,
+        )
+    if provider != "sample":
+        return {
+            "success": False,
+            "origin": origin,
+            "destination": destination,
+            "date": date,
+            "missing_fields": [],
+            "message": "Unknown flight search provider. Set FLIGHT_SEARCH_PROVIDER to 'sample' or 'duffel'.",
+            "results": [],
+        }
+
+    if (
+        passenger_count != DEFAULT_PASSENGER_COUNT
+        or cabin_class != DEFAULT_CABIN_CLASS
+        or return_date is not None
+    ):
+        return {
+            "success": False,
+            "origin": origin,
+            "destination": destination,
+            "date": date,
+            "missing_fields": [],
+            "message": "Sample mode supports one adult, economy, one-way searches only. Select Duffel mode for these options.",
             "results": [],
         }
 
@@ -83,7 +135,7 @@ def search_flights(origin, destination, date):
             "destination": destination,
             "date": date,
             "missing_fields": [],
-            "message": "No flights found for this route and date.",
+            "message": NO_FLIGHTS_MESSAGE,
             "results": [],
         }
 

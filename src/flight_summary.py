@@ -3,6 +3,11 @@ import json
 from src.llm_client import generate_summary
 
 
+def _format_price(flight):
+    currency = flight.get("currency", "USD")
+    return f"{currency} {flight['price']:,.2f}"
+
+
 def build_recommendation_cards(summary):
     if not summary or not summary.get("best_choice"):
         return {}
@@ -12,9 +17,9 @@ def build_recommendation_cards(summary):
     best_choice = summary.get("best_choice")
 
     return {
-        "cheapest": f"{cheapest['airline']} (${cheapest['price']})",
+        "cheapest": f"{cheapest['airline']} ({_format_price(cheapest)})",
         "fastest": f"{fastest['airline']} ({fastest['duration']})",
-        "best_choice": f"{best_choice['airline']} (${best_choice['price']})",
+        "best_choice": f"{best_choice['airline']} ({_format_price(best_choice)})",
     }
 
 
@@ -37,7 +42,15 @@ def _parse_duration_to_minutes(duration_text):
     return total_minutes
 
 
-def summarize_flights(flights):
+def _total_trip_duration_minutes(flight):
+    total_minutes = _parse_duration_to_minutes(flight["duration"])
+    return_duration = flight.get("return_duration")
+    if return_duration:
+        total_minutes += _parse_duration_to_minutes(return_duration)
+    return total_minutes
+
+
+def summarize_flights(flights, summary_text=None, use_llm=True):
     if not flights:
         return {
             "cheapest": None,
@@ -47,7 +60,7 @@ def summarize_flights(flights):
         }
 
     cheapest = min(flights, key=lambda f: f["price"])
-    fastest = min(flights, key=lambda f: _parse_duration_to_minutes(f["duration"]))
+    fastest = min(flights, key=_total_trip_duration_minutes)
     best_choice = cheapest
 
     flight_data = json.dumps(flights, indent=2)
@@ -58,13 +71,15 @@ def summarize_flights(flights):
         f"{flight_data}"
     )
 
-    ai_summary = generate_summary(prompt)
+    ai_summary = summary_text.strip() if isinstance(summary_text, str) else ""
+    if not ai_summary and use_llm:
+        ai_summary = generate_summary(prompt)
 
     if not ai_summary:
         ai_summary = (
-            f"Cheapest option: {cheapest['airline']} at ${cheapest['price']}. "
+            f"Cheapest option: {cheapest['airline']} at {_format_price(cheapest)}. "
             f"Fastest option: {fastest['airline']} in {fastest['duration']}. "
-            f"Best overall value: {best_choice['airline']} at ${best_choice['price']}."
+            f"Best overall value: {best_choice['airline']} at {_format_price(best_choice)}."
         )
 
     return {

@@ -42,7 +42,7 @@ def _extract_value(query: str, keyword: str, next_keywords=None):
     return value or None
 
 
-def _build_missing_fields_message(missing_fields):
+def build_missing_fields_message(missing_fields):
     if not missing_fields:
         return "All required flight details are present."
 
@@ -67,7 +67,7 @@ def _build_missing_fields_message(missing_fields):
 
 
 def parse_flight_query(query: str):
-    if not query or not query.strip():
+    if not isinstance(query, str) or not query.strip():
         missing_fields = ["origin", "destination", "date"]
         return {
             "success": False,
@@ -75,7 +75,7 @@ def parse_flight_query(query: str):
             "destination": None,
             "date": None,
             "missing_fields": missing_fields,
-            "message": _build_missing_fields_message(missing_fields),
+            "message": build_missing_fields_message(missing_fields),
             "query": query,
         }
 
@@ -99,6 +99,6 @@ def parse_flight_query(query: str):
         "destination": destination,
         "date": parsed_date,
         "missing_fields": missing_fields,
-        "message": _build_missing_fields_message(missing_fields),
+        "message": build_missing_fields_message(missing_fields),
         "query": query,
     }
